@@ -19,9 +19,15 @@ if ( is_readable( $action_scheduler ) ) {
 require_once __DIR__ . '/css/class-css-cache.php';
 require_once __DIR__ . '/css/class-css-callback-controller.php';
 require_once __DIR__ . '/css/class-css-html-processor.php';
+require_once __DIR__ . '/css/class-css-admin.php';
+require_once __DIR__ . '/core/class-admin.php';
 add_action(
 	'plugins_loaded',
 	static function () {
+        if (is_admin()) {
+            (new \SwiftPress\Optimizer\Core_Admin())->init();
+            (new \SwiftPress\Optimizer\CSS_Admin())->init();
+        }
 		new \SwiftPress\Optimizer\CSS_Cache();
         (new \SwiftPress\Optimizer\CSS_Callback_Controller())->register();
         (new \SwiftPress\Optimizer\CSS_HTML_Processor())->init();
