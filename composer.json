@@ -1,0 +1,11 @@
+{
+  "name": "swiftpress/optimizer",
+  "description": "Composer dependencies for the SwiftPress Optimizer WordPress plugin",
+  "type": "wordpress-plugin",
+  "require": {
+    "woocommerce/action-scheduler": "^4.2"
+  },
+  "config": {
+    "sort-packages": true
+  }
+}
