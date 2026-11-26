@@ -13,13 +13,33 @@ final class CSS_Cache
 
     public function __construct()
     {
-        add_action('wp', array($this, 'check_cache'), 20);
+        add_action('wp', function () {
+            $mode = CSS_Settings::get_mode();
+            $this->check_cache($mode);
+        }, 20);
         add_action(self::FETCH_HOOK, array($this, 'fetch_css'), 10, 3);
 
     }
 
-    public function check_cache(): void
+    public function init()
     {
+        add_action('wp', array($this, 'check_cache'), 20);
+        add_action(self::FETCH_HOOK, array($this, 'fetch_css'), 10, 3);
+    }
+
+    public function check_cache(string $mode): void
+    {
+        $strategies = match ($mode) {
+            'both'     => ['critical', 'minimal'],
+            'critical' => ['critical'],
+            'minimal'  => ['minimal'],
+            default    => [],
+        };
+
+        if (empty($strategies)) {
+            return;
+        }
+
         if (is_admin() || is_feed() || is_preview() || is_customize_preview() || is_robots() || is_trackback()) {
             return;
         }
@@ -29,20 +49,23 @@ final class CSS_Cache
             return;
         }
 
-        $path = $this->cache_path($url);
-        $args = [
-            'url'      => $url,
-            'strategy' => 'critical',
-            'path'     => $path,
-        ];
+        foreach ($strategies as $strategy) {
+            $path = $this->cache_path($url, $strategy);
 
-        if (file_exists($path) && is_readable($path)) {
-            as_unschedule_all_actions(self::FETCH_HOOK, $args, self::GROUP);
-            return;
-        }
+            $args = [
+                'url'      => $url,
+                'strategy' => $strategy,
+                'path'     => $path,
+            ];
 
-        if (!as_has_scheduled_action(self::FETCH_HOOK, $args, self::GROUP)) {
-            as_enqueue_async_action(self::FETCH_HOOK, $args, self::GROUP, true);
+            if (file_exists($path) && is_readable($path)) {
+                as_unschedule_all_actions(self::FETCH_HOOK, $args, self::GROUP);
+                continue;
+            }
+
+            if (!as_has_scheduled_action(self::FETCH_HOOK, $args, self::GROUP)) {
+                as_enqueue_async_action(self::FETCH_HOOK, $args, self::GROUP, true);
+            }
         }
     }
 
@@ -50,9 +73,10 @@ final class CSS_Cache
                               string $strategy,
                               string $path): bool
     {
+        $api = CSS_Settings::get_api_url();
         $base = 'http://host.docker.internal:3000';
 
-        $response = wp_remote_post($base . '/api/css/jobs', [
+        $response = wp_remote_post($api, [
             'headers' => [
                 'Content-Type' => 'application/json',
             ],
@@ -74,22 +98,13 @@ final class CSS_Cache
         if (empty($status_url)) {
             return false;
         }
-        /*No polling opted for callback
-         *
-        as_schedule_recurring_action(
-            time() + 60,
-            self::POLL_INTERVAL,
-            self::POLL_HOOK,
-            [$status_url, $path],
-            self::GROUP,
-            true
-        );*/
+
         return true;
     }
 
 
 
-    private function current_url(): ?string
+    public function current_url(): ?string
     {
         if (
             is_admin()
@@ -122,9 +137,8 @@ final class CSS_Cache
             return null;
         }
 
-        $url = home_url($request_uri);
-        $url = remove_query_arg(['preview', 'preview_id', 'preview_nonce'], $url);
-        $url = esc_url_raw($url);
+        // Build URL from $path only so all query strings are stripped
+        $url = esc_url_raw(home_url($path));
 
         // Ensure final output is a valid HTTP/HTTPS URL
         if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {

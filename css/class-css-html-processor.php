@@ -11,9 +11,10 @@ class CSS_HTML_Processor
     /**
      * @param string $mode 'critical' | 'minimal' | 'both'
      */
-    public function __construct(string $mode = 'critical')
+    public function __construct()
     {
-        $this->mode = in_array($mode, ['critical', 'minimal', 'both'], true) ? $mode : 'critical';
+
+        $this->mode = CSS_Settings::get_mode();
     }
 
     public function init(): void

@@ -21,6 +21,8 @@ require_once __DIR__ . '/css/class-css-callback-controller.php';
 require_once __DIR__ . '/css/class-css-html-processor.php';
 require_once __DIR__ . '/css/class-css-admin.php';
 require_once __DIR__ . '/core/class-admin.php';
+require_once __DIR__  . "/css/class-css-settings.php";
+
 add_action(
 	'plugins_loaded',
 	static function () {
